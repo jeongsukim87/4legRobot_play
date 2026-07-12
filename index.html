@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>사족보행로봇 공연 제어</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #f3f6fa;
+      color: #1f2937;
+      font-family: "Pretendard", "Noto Sans KR", Arial, sans-serif;
+    }
+    .container { width: min(980px, 100%); margin: 0 auto; }
+    h1 { margin: 0 0 8px; color: #123a68; font-size: 30px; }
+    .subtitle { margin: 0 0 22px; color: #64748b; line-height: 1.6; }
+    .card {
+      margin-bottom: 18px;
+      padding: 22px;
+      background: #fff;
+      border: 1px solid #d8e0ea;
+      border-radius: 16px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.05);
+    }
+    .card h2 { margin: 0 0 16px; color: #173f6d; font-size: 20px; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .status {
+      min-height: 42px;
+      padding: 0 14px;
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      font-weight: 800;
+    }
+    .disconnected { background: #fee2e2; color: #991b1b; }
+    .connecting { background: #fef3c7; color: #92400e; }
+    .connected { background: #dcfce7; color: #166534; }
+    button, select, input { min-height: 42px; border-radius: 9px; font: inherit; }
+    button {
+      padding: 0 16px;
+      border: 0;
+      background: #1d4f85;
+      color: #fff;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    button.secondary { background: #fff; color: #1d4f85; border: 1px solid #1d4f85; }
+    button.danger { background: #b42318; }
+    button.play { background: #0b6b42; }
+    button.pause { background: #9a6700; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .notice {
+      margin-top: 12px;
+      padding: 12px;
+      background: #fff7db;
+      color: #704d00;
+      border-radius: 10px;
+      line-height: 1.6;
+      font-size: 14px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 120px 1fr 130px;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    input[type="file"], select, input[type="number"] {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+    }
+    .music-list { display: grid; gap: 10px; }
+    .music-item {
+      display: grid;
+      grid-template-columns: 58px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px;
+      border: 1px solid #dbe3ec;
+      border-radius: 12px;
+      background: #f8fafc;
+      cursor: pointer;
+    }
+    .music-item.selected { border: 2px solid #1d4f85; background: #edf5ff; }
+    .music-number {
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      background: #173f6d;
+      color: #fff;
+      font-weight: 900;
+      font-size: 18px;
+    }
+    .music-title { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .music-meta { margin-top: 4px; color: #64748b; font-size: 13px; }
+    .execution-status {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .execution-grid {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .delay-settings {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .delay-row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 12px;
+      border: 1px solid #dbe3ec;
+      border-radius: 10px;
+      background: #f8fafc;
+    }
+    .delay-row label {
+      font-weight: 800;
+      color: #173f6d;
+    }
+    .delay-row input {
+      width: 100%;
+      min-height: 38px;
+      padding: 6px 8px;
+    }
+    .delay-unit {
+      color: #64748b;
+      font-weight: 700;
+    }
+    .empty-delay {
+      padding: 14px;
+      border-radius: 10px;
+      background: #eef3f9;
+      color: #64748b;
+    }
+    .selected-info {
+      padding: 14px;
+      min-height: 50px;
+      border-radius: 10px;
+      background: #eef3f9;
+      line-height: 1.5;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 180px;
+      gap: 16px;
+      align-items: end;
+    }
+    .buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+    audio { width: 100%; margin-top: 16px; }
+    .log {
+      height: 190px;
+      overflow-y: auto;
+      padding: 14px;
+      background: #111827;
+      color: #d1fae5;
+      border-radius: 10px;
+      font-family: Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+    @media (max-width: 1000px) {
+      .delay-settings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 700px) {
+      .grid, .controls, .music-item { grid-template-columns: 1fr; }
+      .delay-settings { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>12관절 사족보행로봇 공연 제어</h1>
+    <p class="subtitle">음악 재생과 동시에 USB로 연결된 마이크로비트1에 공연 번호를 전송합니다.</p>
+
+    <section class="card">
+      <h2>1. 마이크로비트1 연결</h2>
+      <div class="row">
+        <div id="connectionStatus" class="status disconnected">● 연결되지 않음</div>
+        <button id="connectButton">마이크로비트 연결</button>
+        <button id="checkButton" class="secondary" disabled>페어링 확인 ✓</button>
+        <button id="disconnectButton" class="danger" disabled>연결 해제</button>
+      </div>
+      <div class="notice">
+        Chrome 또는 Edge에서 실행하세요. MakeCode가 마이크로비트를 사용 중이면 MakeCode 탭을 닫고,
+        USB 케이블을 뺐다가 다시 연결한 뒤 시도하세요.
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>2. 음악 등록</h2>
+      <div class="grid" style="display:none;">
+        <label for="performanceNumber"><strong>공연 번호</strong></label>
+        <select id="performanceNumber">
+          <option value="1">1번</option><option value="2">2번</option><option value="3">3번</option>
+          <option value="4">4번</option><option value="5">5번</option><option value="6">6번</option>
+          <option value="7">7번</option>
+        </select>
+        <span></span>
+      </div>
+      <div class="grid">
+        <label for="musicFile"><strong>음악 파일</strong></label>
+        <input id="musicFile" type="file" accept="audio/*,.mp3" multiple />
+        <button id="addMusicButton">한꺼번에 등록</button>
+      </div>
+      <div id="musicList" class="music-list"></div>
+
+      <div class="notice">
+        여러 파일을 한꺼번에 선택할 수 있습니다. 파일명 맨 앞의 번호를 공연 번호로 인식합니다.<br>
+        예: <strong>1. 시작 음악.mp3</strong>, <strong>2. 두 번째 음악.mp3</strong> … <strong>7. 마지막 음악.mp3</strong><br>
+        번호가 없는 파일, 1~7 이외의 번호, 중복 번호 파일은 등록하지 않고 결과를 안내합니다.
+        음악과 지연값은 서버, 쿠키, localStorage에 저장하지 않으며 새로고침하면 모두 초기화됩니다.
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>3. 공연 실행</h2>
+
+      <div class="execution-status">
+        <div id="executionConnectionStatus" class="status disconnected">● 연결되지 않음</div>
+        <button id="executionCheckButton" class="secondary" disabled>페어링 다시 확인 ✓</button>
+      </div>
+
+      <div class="execution-grid">
+        <label for="performanceSelect"><strong>실행할 공연</strong></label>
+        <select id="performanceSelect" disabled>
+          <option value="">등록된 음악을 선택하세요.</option>
+        </select>
+      </div>
+
+      <div id="selectedInfo" class="selected-info">등록된 음악을 선택하세요.</div>
+
+      <div class="buttons">
+        <button id="playButton" class="play" disabled>▶ 공연 시작</button>
+        <button id="pauseButton" class="pause" disabled>Ⅱ 일시정지</button>
+        <button id="stopButton" class="danger" disabled>■ 음악 정지</button>
+      </div>
+
+      <audio id="audioPlayer" controls></audio>
+
+      <h3 style="margin:22px 0 8px; color:#173f6d;">통신 기록</h3>
+      <div id="log" class="log"></div>
+
+      <h3 style="margin:22px 0 8px; color:#173f6d;">음악별 지연 보정값</h3>
+      <div id="delaySettings" class="delay-settings">
+        <div class="empty-delay">음악을 업로드하면 공연 번호에 맞춰 지연값 입력칸이 생성됩니다.</div>
+      </div>
+
+      <div class="buttons">
+        <button id="saveAllDelayButton" class="secondary" disabled>음악별 지연값 저장</button>
+        <button id="resetAllDelayButton" class="danger" disabled>음악별 지연값 초기화</button>
+      </div>
+
+      <div class="notice">
+        <strong>음악 지연 보정이란?</strong><br>
+        공연 번호를 먼저 마이크로비트1로 전송한 뒤, 설정한 시간만큼 기다렸다가 음악을 재생하는 기능입니다.
+        로봇이 음악보다 늦게 움직일 때 해당 음악의 값을 조금씩 높여 시작 시점을 맞출 수 있습니다.<br>
+        예: <strong>100ms = 0.1초</strong>, <strong>500ms = 0.5초</strong>.
+        저장한 값은 현재 화면이 열려 있는 동안 유지되며, 새로고침하면 초기화됩니다.
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { createUSBConnection } from "https://esm.sh/@microbit/microbit-connection@1.0.0/usb";
+
+    let microbit = null;
+    let connected = false;
+    let serialBuffer = "";
+    let musicEntries = [];
+    let selectedMusicId = null;
+
+    const $ = id => document.getElementById(id);
+    const connectionStatus = $("connectionStatus");
+    const connectButton = $("connectButton");
+    const checkButton = $("checkButton");
+    const disconnectButton = $("disconnectButton");
+    const performanceNumber = $("performanceNumber");
+    const musicFile = $("musicFile");
+    const addMusicButton = $("addMusicButton");
+    const saveAllDelayButton = $("saveAllDelayButton");
+    const resetAllDelayButton = $("resetAllDelayButton");
+    const musicList = $("musicList");
+    const performanceSelect = $("performanceSelect");
+    const delaySettings = $("delaySettings");
+    const selectedInfo = $("selectedInfo");
+    const executionConnectionStatus = $("executionConnectionStatus");
+    const executionCheckButton = $("executionCheckButton");
+    const playButton = $("playButton");
+    const pauseButton = $("pauseButton");
+    const stopButton = $("stopButton");
+    const audioPlayer = $("audioPlayer");
+    const logElement = $("log");
+
+    function log(message) {
+      const time = new Date().toLocaleTimeString();
+      logElement.textContent += `[${time}] ${message}\n`;
+      logElement.scrollTop = logElement.scrollHeight;
+    }
+
+    function setStatus(state, text) {
+      connectionStatus.className = `status ${state}`;
+      connectionStatus.textContent = text;
+      executionConnectionStatus.className = `status ${state}`;
+      executionConnectionStatus.textContent = text;
+
+      connectButton.disabled = state === "connecting" || state === "connected";
+      checkButton.disabled = state !== "connected";
+      executionCheckButton.disabled = state !== "connected";
+      disconnectButton.disabled = state !== "connected";
+      updateButtons();
+    }
+
+    function updateButtons() {
+      const hasMusic = musicEntries.some(item => item.id === selectedMusicId);
+      performanceSelect.disabled = musicEntries.length === 0;
+      saveAllDelayButton.disabled = musicEntries.length === 0;
+      resetAllDelayButton.disabled = musicEntries.length === 0;
+      playButton.disabled = !connected || !hasMusic;
+      pauseButton.disabled = !audioPlayer.src;
+      stopButton.disabled = !audioPlayer.src;
+    }
+
+    function handleSerialData(payload) {
+      const text = typeof payload.data === "string" ? payload.data : String(payload.data ?? "");
+      serialBuffer += text;
+      const lines = serialBuffer.split(/\r?\n/);
+      serialBuffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        const cleaned = line.trim();
+        if (!cleaned) continue;
+        log(`마이크로비트 응답: ${cleaned}`);
+        if (cleaned === "READY") {
+          setStatus("connected", "● 연결 및 응답 확인됨");
+        }
+      }
+    }
+
+    function prepareConnection() {
+      const connection = createUSBConnection({ pauseOnHidden: false });
+
+      connection.addEventListener("status", data => {
+        log(`연결 상태: ${data.status}`);
+        if (data.status === "Connected") {
+          connected = true;
+          setStatus("connected", "● 마이크로비트 연결됨");
+        } else if (data.status === "Connecting") {
+          connected = false;
+          setStatus("connecting", "● 연결 중...");
+        } else if (data.status === "Paused") {
+          connected = false;
+          setStatus("connecting", "● 연결 일시 중지");
+        } else {
+          connected = false;
+          setStatus("disconnected", "● 연결되지 않음");
+        }
+      });
+
+      connection.addEventListener("serialdata", handleSerialData);
+      connection.addEventListener("serialreset", () => log("직렬 통신이 다시 시작되었습니다."));
+      connection.addEventListener("backgrounderror", data => {
+        console.error(data.error);
+        log(`백그라운드 오류: ${data.error?.message || data.error?.code || data.error}`);
+      });
+
+      return connection;
+    }
+
+    async function connectMicrobit() {
+      try {
+        setStatus("connecting", "● 연결 중...");
+        log("마이크로비트 장치 선택창을 엽니다.");
+
+        if (!microbit) microbit = prepareConnection();
+
+        const timeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("연결 시간이 초과되었습니다.")), 15000)
+        );
+
+        await Promise.race([microbit.connect(), timeout]);
+
+        connected = microbit.status === "Connected";
+        if (!connected) throw new Error(`연결 후 상태: ${microbit.status}`);
+
+        setStatus("connected", "● 마이크로비트 연결됨");
+        log("WebUSB 연결 완료");
+      } catch (error) {
+        console.error(error);
+        connected = false;
+        setStatus("disconnected", "● 연결되지 않음");
+        log(`연결 오류: ${error?.message || error?.code || error}`);
+        alert(
+          "마이크로비트 연결에 실패했습니다.\n\n" +
+          "1. MakeCode 탭을 닫습니다.\n" +
+          "2. USB 케이블을 뺐다가 다시 연결합니다.\n" +
+          "3. Chrome 또는 Edge에서 다시 시도합니다.\n\n" +
+          `오류: ${error?.message || error?.code || error}`
+        );
+      }
+    }
+
+    async function disconnectMicrobit() {
+      try {
+        if (microbit) await microbit.disconnect();
+      } catch (error) {
+        log(`연결 해제 오류: ${error?.message || error}`);
+      } finally {
+        connected = false;
+        serialBuffer = "";
+        setStatus("disconnected", "● 연결되지 않음");
+        log("연결 해제");
+      }
+    }
+
+    async function sendCommand(command) {
+      if (!microbit || !connected || microbit.status !== "Connected") {
+        throw new Error("마이크로비트가 연결되지 않았습니다.");
+      }
+      await microbit.serialWrite(`${command}\n`);
+      log(`웹앱 전송: ${command}`);
+    }
+
+    async function checkConnection() {
+      try {
+        await sendCommand("CHECK");
+      } catch (error) {
+        log(`확인 오류: ${error?.message || error}`);
+        alert(error?.message || error);
+      }
+    }
+
+    function formatSize(bytes) {
+      return bytes < 1024 * 1024
+        ? `${(bytes / 1024).toFixed(1)} KB`
+        : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    }
+
+    function getPerformanceNumberFromFilename(filename) {
+      // 예: "1. 음악.mp3", "1 음악.mp3", "1_음악.mp3", "1-음악.mp3", "1) 음악.mp3"
+      const match = filename.match(/^\s*([1-7])(?:\s*[.\-_)])?\s*/);
+      return match ? Number(match[1]) : null;
+    }
+
+    function addMusic() {
+      const files = Array.from(musicFile.files || []);
+
+      if (files.length === 0) {
+        alert("등록할 음악 파일을 선택하세요.");
+        return;
+      }
+
+      const accepted = [];
+      const rejected = [];
+      const numbersInThisBatch = new Set();
+
+      for (const file of files) {
+        const number = getPerformanceNumberFromFilename(file.name);
+
+        if (number === null) {
+          rejected.push(`${file.name} : 파일명 앞에 1~7 번호가 없음`);
+          continue;
+        }
+
+        if (musicEntries.some(item => item.number === number)) {
+          rejected.push(`${file.name} : ${number}번이 이미 등록되어 있음`);
+          continue;
+        }
+
+        if (numbersInThisBatch.has(number)) {
+          rejected.push(`${file.name} : 선택한 파일 안에서 ${number}번이 중복됨`);
+          continue;
+        }
+
+        numbersInThisBatch.add(number);
+
+        accepted.push({
+          id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+          number,
+          name: file.name,
+          size: file.size,
+          url: URL.createObjectURL(file),
+          delayMs: 0
+        });
+      }
+
+      accepted.sort((a, b) => a.number - b.number);
+      musicEntries.push(...accepted);
+      musicEntries.sort((a, b) => a.number - b.number);
+
+      if (accepted.length > 0) {
+        selectedMusicId = accepted[0].id;
+        renderMusicList();
+        selectMusic(accepted[0].id);
+
+        for (const entry of accepted) {
+          log(`음악 등록: ${entry.number}번 / ${entry.name}`);
+        }
+      }
+
+      musicFile.value = "";
+
+      let message = `${accepted.length}개 파일을 등록했습니다.`;
+
+      if (rejected.length > 0) {
+        message += `\n\n등록하지 못한 파일 ${rejected.length}개:\n- ${rejected.join("\n- ")}`;
+        for (const reason of rejected) {
+          log(`등록 제외: ${reason}`);
+        }
+      }
+
+      alert(message);
+    }
+
+    function renderMusicList() {
+      musicList.innerHTML = "";
+
+      if (musicEntries.length === 0) {
+        musicList.innerHTML = '<div class="selected-info">등록된 음악이 없습니다.</div>';
+        renderPerformanceControls();
+        updateButtons();
+        return;
+      }
+
+      for (const entry of musicEntries) {
+        const item = document.createElement("div");
+        item.className = `music-item${entry.id === selectedMusicId ? " selected" : ""}`;
+        item.innerHTML = `
+          <div class="music-number">${entry.number}</div>
+          <div>
+            <div class="music-title"></div>
+            <div class="music-meta">${formatSize(entry.size)}</div>
+          </div>
+          <button type="button" class="danger remove">삭제</button>
+        `;
+
+        item.querySelector(".music-title").textContent = entry.name;
+
+        item.addEventListener("click", event => {
+          if (!event.target.classList.contains("remove")) {
+            selectMusic(entry.id);
+          }
+        });
+
+        item.querySelector(".remove").addEventListener("click", event => {
+          event.stopPropagation();
+          removeMusic(entry.id);
+        });
+
+        musicList.appendChild(item);
+      }
+
+      renderPerformanceControls();
+      updateButtons();
+    }
+
+    function renderPerformanceControls() {
+      performanceSelect.innerHTML = "";
+
+      if (musicEntries.length === 0) {
+        performanceSelect.innerHTML = '<option value="">등록된 음악을 선택하세요.</option>';
+        delaySettings.innerHTML =
+          '<div class="empty-delay">음악을 업로드하면 공연 번호에 맞춰 지연값 입력칸이 생성됩니다.</div>';
+        return;
+      }
+
+      for (const entry of musicEntries) {
+        const option = document.createElement("option");
+        option.value = entry.id;
+        option.textContent = `${entry.number}번 공연 | ${entry.name}`;
+        performanceSelect.appendChild(option);
+      }
+
+      if (!musicEntries.some(entry => entry.id === selectedMusicId)) {
+        selectedMusicId = musicEntries[0].id;
+      }
+
+      performanceSelect.value = selectedMusicId;
+
+      delaySettings.innerHTML = "";
+
+      for (const entry of musicEntries) {
+        const row = document.createElement("div");
+        row.className = "delay-row";
+        row.innerHTML = `
+          <label for="delay-${entry.id}">${entry.number}번</label>
+          <input
+            id="delay-${entry.id}"
+            type="number"
+            class="delay-input"
+            data-entry-id="${entry.id}"
+            min="0"
+            max="2000"
+            step="10"
+            value="${entry.delayMs}"
+            aria-label="${entry.number}번 음악 지연값"
+          />
+          <span class="delay-unit">ms</span>
+        `;
+        delaySettings.appendChild(row);
+      }
+    }
+
+    function selectMusic(id) {
+      const entry = musicEntries.find(item => item.id === id);
+      if (!entry) return;
+
+      selectedMusicId = id;
+      performanceSelect.value = id;
+      audioPlayer.src = entry.url;
+      audioPlayer.load();
+      selectedInfo.textContent =
+        `${entry.number}번 공연 | ${entry.name} | 저장된 지연값 ${entry.delayMs}ms`;
+
+      for (const item of musicList.querySelectorAll(".music-item")) {
+        const number = Number(item.querySelector(".music-number")?.textContent);
+        item.classList.toggle("selected", number === entry.number);
+      }
+
+      updateButtons();
+      log(`공연 선택: ${entry.number}번 / ${entry.name}`);
+    }
+
+    function removeMusic(id) {
+      const index = musicEntries.findIndex(item => item.id === id);
+      if (index < 0) return;
+
+      const removed = musicEntries[index];
+      URL.revokeObjectURL(removed.url);
+      musicEntries.splice(index, 1);
+
+      if (selectedMusicId === id) {
+        selectedMusicId = musicEntries.length > 0 ? musicEntries[0].id : null;
+        audioPlayer.pause();
+
+        if (selectedMusicId) {
+          const next = musicEntries.find(item => item.id === selectedMusicId);
+          audioPlayer.src = next.url;
+          audioPlayer.load();
+          selectedInfo.textContent =
+            `${next.number}번 공연 | ${next.name} | 저장된 지연값 ${next.delayMs}ms`;
+        } else {
+          audioPlayer.removeAttribute("src");
+          audioPlayer.load();
+          selectedInfo.textContent = "등록된 음악을 선택하세요.";
+        }
+      }
+
+      renderMusicList();
+
+      if (selectedMusicId) {
+        selectMusic(selectedMusicId);
+      }
+
+      log(`음악 삭제: ${removed.number}번 / ${removed.name}`);
+    }
+
+    function saveAllDelayValues() {
+      const inputs = Array.from(delaySettings.querySelectorAll(".delay-input"));
+
+      for (const input of inputs) {
+        const entry = musicEntries.find(item => item.id === input.dataset.entryId);
+        if (!entry) continue;
+
+        const value = Math.max(0, Math.min(2000, Number(input.value) || 0));
+        entry.delayMs = value;
+        input.value = String(value);
+        log(`지연값 저장: ${entry.number}번 / ${value}ms`);
+      }
+
+      const selected = musicEntries.find(item => item.id === selectedMusicId);
+      if (selected) {
+        selectedInfo.textContent =
+          `${selected.number}번 공연 | ${selected.name} | 저장된 지연값 ${selected.delayMs}ms`;
+      }
+
+      alert("음악별 지연값을 저장했습니다. 새로고침 전까지 유지됩니다.");
+    }
+
+    function resetAllDelayValues() {
+      if (musicEntries.length === 0) {
+        return;
+      }
+
+      const confirmed = confirm(
+        "모든 음악의 지연 보정값을 0ms로 초기화하시겠습니까?"
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
+      for (const entry of musicEntries) {
+        entry.delayMs = 0;
+      }
+
+      for (const input of delaySettings.querySelectorAll(".delay-input")) {
+        input.value = "0";
+      }
+
+      const selected = musicEntries.find(item => item.id === selectedMusicId);
+
+      if (selected) {
+        selectedInfo.textContent =
+          `${selected.number}번 공연 | ${selected.name} | 저장된 지연값 0ms`;
+      }
+
+      log("모든 음악의 지연 보정값을 0ms로 초기화했습니다.");
+      alert("모든 음악의 지연 보정값을 0ms로 초기화했습니다.");
+    }
+
+    async function startPerformance() {
+      const entry = musicEntries.find(item => item.id === selectedMusicId);
+      if (!entry) return alert("실행할 음악을 선택하세요.");
+      if (!connected) return alert("마이크로비트1을 먼저 연결하세요.");
+
+      const delay = Math.max(0, Math.min(2000, Number(entry.delayMs) || 0));
+
+      try {
+        playButton.disabled = true;
+        audioPlayer.pause();
+        audioPlayer.currentTime = 0;
+
+        await sendCommand(`PLAY:${entry.number}`);
+
+        if (delay > 0) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+
+        await audioPlayer.play();
+        log(`공연 시작: ${entry.number}번 / 음악 지연 ${delay}ms`);
+      } catch (error) {
+        console.error(error);
+        log(`공연 시작 오류: ${error?.message || error}`);
+        alert(`공연을 시작하지 못했습니다.\n\n${error?.message || error}`);
+      } finally {
+        updateButtons();
+      }
+    }
+
+    connectButton.addEventListener("click", connectMicrobit);
+    disconnectButton.addEventListener("click", disconnectMicrobit);
+    checkButton.addEventListener("click", checkConnection);
+    executionCheckButton.addEventListener("click", checkConnection);
+    addMusicButton.addEventListener("click", addMusic);
+    saveAllDelayButton.addEventListener("click", saveAllDelayValues);
+    resetAllDelayButton.addEventListener("click", resetAllDelayValues);
+    performanceSelect.addEventListener("change", () => {
+      selectMusic(performanceSelect.value);
+    });
+    playButton.addEventListener("click", startPerformance);
+    pauseButton.addEventListener("click", () => {
+      audioPlayer.pause();
+      log("음악 일시정지");
+    });
+    stopButton.addEventListener("click", () => {
+      audioPlayer.pause();
+      audioPlayer.currentTime = 0;
+      log("음악 정지");
+    });
+
+    audioPlayer.addEventListener("ended", () => {
+      log("음악 재생 완료");
+      updateButtons();
+    });
+
+    window.addEventListener("beforeunload", () => {
+      for (const entry of musicEntries) URL.revokeObjectURL(entry.url);
+    });
+
+    setStatus("disconnected", "● 연결되지 않음");
+    renderMusicList();
+    log("웹앱 준비 완료");
+  </script>
+</body>
+</html>
