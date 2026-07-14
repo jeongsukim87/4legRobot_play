@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>사족보행로봇 공연 제어</title>
+  <title>사족보행로봇 공연 제어v1.1</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -267,9 +267,13 @@
 
       <div class="notice">
         <strong>음악 지연 보정이란?</strong><br>
-        공연 번호를 먼저 마이크로비트1로 전송한 뒤, 설정한 시간만큼 기다렸다가 음악을 재생하는 기능입니다.
-        로봇이 음악보다 늦게 움직일 때 해당 음악의 값을 조금씩 높여 시작 시점을 맞출 수 있습니다.<br>
-        예: <strong>100ms = 0.1초</strong>, <strong>500ms = 0.5초</strong>.
+        로봇과 음악의 시작 시점을 맞추기 위한 기능입니다.<br>
+        <strong>양수값</strong>은 공연 번호를 먼저 전송한 뒤 해당 시간만큼 기다리고 음악을 재생합니다.
+        로봇이 음악보다 늦게 움직일 때 사용합니다.<br>
+        <strong>음수값</strong>은 음악을 먼저 재생한 뒤 절댓값만큼 기다리고 공연 번호를 전송합니다.
+        로봇이 음악보다 빨리 움직일 때 사용합니다.<br>
+        예: <strong>100ms</strong>는 로봇 신호를 먼저 보내고 0.1초 뒤 음악 재생,
+        <strong>-100ms</strong>는 음악을 먼저 재생하고 0.1초 뒤 로봇 신호 전송입니다.<br>
         저장한 값은 현재 화면이 열려 있는 동안 유지되며, 새로고침하면 초기화됩니다.
       </div>
     </section>
@@ -603,7 +607,7 @@
             type="number"
             class="delay-input"
             data-entry-id="${entry.id}"
-            min="0"
+            min="-2000"
             max="2000"
             step="10"
             value="${entry.delayMs}"
@@ -676,7 +680,7 @@
         const entry = musicEntries.find(item => item.id === input.dataset.entryId);
         if (!entry) continue;
 
-        const value = Math.max(0, Math.min(2000, Number(input.value) || 0));
+        const value = Math.max(-2000, Math.min(2000, Number(input.value) || 0));
         entry.delayMs = value;
         input.value = String(value);
         log(`지연값 저장: ${entry.number}번 / ${value}ms`);
@@ -728,20 +732,29 @@
       if (!entry) return alert("실행할 음악을 선택하세요.");
       if (!connected) return alert("마이크로비트1을 먼저 연결하세요.");
 
-      const delay = Math.max(0, Math.min(2000, Number(entry.delayMs) || 0));
+      const delay = Math.max(-2000, Math.min(2000, Number(entry.delayMs) || 0));
 
       try {
         playButton.disabled = true;
         audioPlayer.pause();
         audioPlayer.currentTime = 0;
 
-        await sendCommand(`PLAY:${entry.number}`);
+        if (delay >= 0) {
+          // 양수: 로봇 신호를 먼저 보내고, 설정 시간 후 음악 재생
+          await sendCommand(`PLAY:${entry.number}`);
 
-        if (delay > 0) {
-          await new Promise(resolve => setTimeout(resolve, delay));
+          if (delay > 0) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+
+          await audioPlayer.play();
+        } else {
+          // 음수: 음악을 먼저 재생하고, 절댓값만큼 기다린 후 로봇 신호 전송
+          await audioPlayer.play();
+          await new Promise(resolve => setTimeout(resolve, Math.abs(delay)));
+          await sendCommand(`PLAY:${entry.number}`);
         }
 
-        await audioPlayer.play();
         log(`공연 시작: ${entry.number}번 / 음악 지연 ${delay}ms`);
       } catch (error) {
         console.error(error);
