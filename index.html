@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>사족보행로봇 공연 제어V2.0</title>
+  <title>사족보행로봇 공연 제어V2.1</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -458,9 +458,22 @@
     }
 
     function getPerformanceNumberFromFilename(filename) {
-      // 파일명 맨 앞의 1~12를 공연 번호로 인식
-      const match = filename.match(/^\s*((?:[1-9]|1[0-2]))(?:\s*[.\-_)])?\s*/);
-      return match ? Number(match[1]) : null;
+      // 파일명 맨 앞의 연속된 숫자를 읽은 뒤 1~12인지 확인
+      // 예: 1. song.mp3, 9. Pretty Girl.mp3, 10. Lemonade.mp3,
+      //     11. Red Red.mp3, 12. It's Me.mp3
+      const match = filename.match(/^\s*(\d+)/);
+
+      if (!match) {
+        return null;
+      }
+
+      const number = Number(match[1]);
+
+      if (number >= 1 && number <= 12) {
+        return number;
+      }
+
+      return null;
     }
 
     function addMusic() {
